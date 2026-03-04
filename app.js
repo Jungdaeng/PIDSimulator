@@ -1,5 +1,7 @@
 const canvas = document.getElementById("simCanvas");
 const ctx = canvas.getContext("2d");
+const plotCanvas = document.getElementById("plotCanvas");
+const plotCtx = plotCanvas.getContext("2d");
 
 const controls = {
   density: document.getElementById("density"),
@@ -19,6 +21,7 @@ const g = 9.81;
 const beamLength = 1.2;
 const beamPixel = 760;
 const center = { x: canvas.width / 2, y: canvas.height / 2 + 40 };
+const plotWindowSec = 12;
 
 const state = {
   running: false,
@@ -30,6 +33,8 @@ const state = {
   prevError: 0,
   t: 0,
 };
+
+const history = [];
 
 function getParams() {
   const density = Number(controls.density.value);
@@ -62,10 +67,19 @@ function reset() {
   state.integral = 0;
   state.prevError = -state.x;
   state.t = 0;
+  history.length = 0;
 }
 
 function disturb() {
   state.v += (Math.random() - 0.5) * 0.8;
+}
+
+function trackHistory(ref) {
+  history.push({ t: state.t, ref, x: state.x });
+  const threshold = state.t - plotWindowSec;
+  while (history.length > 2 && history[0].t < threshold) {
+    history.shift();
+  }
 }
 
 function step(dt) {
@@ -107,6 +121,7 @@ function step(dt) {
   }
 
   state.t += dt;
+  trackHistory(ref);
 
   readout.innerHTML = `
     <div>t: <b>${state.t.toFixed(2)} s</b></div>
@@ -133,6 +148,71 @@ function drawGrid() {
     ctx.lineTo(canvas.width, j);
     ctx.stroke();
   }
+}
+
+function drawPlot() {
+  const w = plotCanvas.width;
+  const h = plotCanvas.height;
+  const margin = { left: 52, right: 16, top: 12, bottom: 28 };
+  const innerW = w - margin.left - margin.right;
+  const innerH = h - margin.top - margin.bottom;
+
+  plotCtx.clearRect(0, 0, w, h);
+  plotCtx.fillStyle = "#071120";
+  plotCtx.fillRect(0, 0, w, h);
+
+  const now = state.t;
+  const tMin = Math.max(0, now - plotWindowSec);
+  const tMax = tMin + plotWindowSec;
+  const yMin = -beamLength / 2;
+  const yMax = beamLength / 2;
+
+  plotCtx.strokeStyle = "rgba(0,230,255,0.2)";
+  plotCtx.lineWidth = 1;
+  for (let i = 0; i <= 6; i += 1) {
+    const y = margin.top + (innerH * i) / 6;
+    plotCtx.beginPath();
+    plotCtx.moveTo(margin.left, y);
+    plotCtx.lineTo(margin.left + innerW, y);
+    plotCtx.stroke();
+  }
+
+  const xScale = (t) => margin.left + ((t - tMin) / (tMax - tMin)) * innerW;
+  const yScale = (v) => margin.top + ((yMax - v) / (yMax - yMin)) * innerH;
+
+  plotCtx.strokeStyle = "#ff5ca8";
+  plotCtx.lineWidth = 2;
+  plotCtx.beginPath();
+  plotCtx.moveTo(margin.left, yScale(0));
+  plotCtx.lineTo(margin.left + innerW, yScale(0));
+  plotCtx.stroke();
+
+  if (history.length > 1) {
+    plotCtx.strokeStyle = "#00e6ff";
+    plotCtx.shadowColor = "#00e6ff";
+    plotCtx.shadowBlur = 10;
+    plotCtx.lineWidth = 2;
+    plotCtx.beginPath();
+    history.forEach((point, index) => {
+      const x = xScale(point.t);
+      const y = yScale(point.x);
+      if (index === 0) {
+        plotCtx.moveTo(x, y);
+      } else {
+        plotCtx.lineTo(x, y);
+      }
+    });
+    plotCtx.stroke();
+    plotCtx.shadowBlur = 0;
+  }
+
+  plotCtx.fillStyle = "#8ea0d6";
+  plotCtx.font = "12px Segoe UI";
+  plotCtx.fillText(`${tMin.toFixed(1)} s`, margin.left, h - 8);
+  plotCtx.fillText(`${tMax.toFixed(1)} s`, w - 50, h - 8);
+  plotCtx.fillText(`${(yMax).toFixed(2)} m`, 6, margin.top + 6);
+  plotCtx.fillText(`0.00 m`, 6, yScale(0) + 4);
+  plotCtx.fillText(`${(yMin).toFixed(2)} m`, 6, margin.top + innerH);
 }
 
 function draw() {
@@ -177,6 +257,8 @@ function draw() {
   ctx.fillStyle = "#b8c8f8";
   ctx.font = "14px Segoe UI";
   ctx.fillText("Motor (Beam Center)", center.x - 70, center.y + 35);
+
+  drawPlot();
 }
 
 let last = performance.now();
@@ -216,4 +298,5 @@ Object.values(controls).forEach((input) => {
 });
 
 reset();
+trackHistory(0);
 requestAnimationFrame(loop);

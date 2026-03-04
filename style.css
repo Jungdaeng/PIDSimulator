@@ -109,6 +109,8 @@ button:hover {
 .stage-wrap {
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 16px;
   padding: 20px;
 }
 
@@ -119,6 +121,44 @@ canvas {
   background: linear-gradient(180deg, #05070d, #0a1024);
   border-radius: 12px;
   box-shadow: 0 0 35px rgba(0, 230, 255, 0.2);
+}
+
+.plot-card {
+  width: min(100%, 980px);
+  padding: 12px;
+  border: 1px solid rgba(0, 230, 255, 0.3);
+  border-radius: 12px;
+  background: rgba(6, 12, 24, 0.8);
+}
+
+.plot-title {
+  color: var(--neon-soft);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.legend i {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.line-ref {
+  background: #ff5ca8;
+}
+
+.line-ball {
+  background: #00e6ff;
 }
 
 .readout {
